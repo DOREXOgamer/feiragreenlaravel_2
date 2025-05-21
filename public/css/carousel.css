@@ -1,0 +1,39 @@
+/* Reset margin and padding for body and html */
+html, body {
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+}
+
+.full-width-banner {
+    width: 100vw;
+    overflow: hidden;
+    position: relative;
+    margin: 0;
+    padding: 0;
+}
+
+.carousel {
+    width: 100vw;
+    overflow: hidden;
+    position: relative;
+    margin: 0;
+    padding: 0;
+}
+
+.banner-image {
+    width: 100vw;
+    height: 100vh;
+    display: none;
+    margin: 0;
+    padding: 0;
+}
+
+.banner-image img {
+    width: 100vw;
+    height: 100vh;
+    object-fit: cover;
+    display: block;
+    margin: 0;
+    padding: 0;
+}
