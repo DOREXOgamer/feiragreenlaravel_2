@@ -55,7 +55,9 @@
                     <!-- Nome -->
                     <div class="form-group">
                         <label for="name" class="form-label">Nome Completo</label>
-                        <input type="text" id="name" name="name" value="{{ old('name', $user->name) }}" required class="form-control">
+                        <input type="text" id="name" name="name" value="{{ old('name', $user->name) }}" required class="form-control"
+                            pattern="[A-Za-zÀ-ÿ\s]+"
+                            title="Apenas letras são permitidas">
                         @error('name')
                             <div class="text-danger">{{ $message }}</div>
                         @enderror

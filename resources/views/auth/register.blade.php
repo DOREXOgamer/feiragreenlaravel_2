@@ -8,16 +8,6 @@
                 <div class="card-header">Criar Conta</div>
 
                 <div class="card-body">
-                
-                    @if ($errors->any())
-                        <div class="register-alert">
-                            <ul class="mb-0">
-                                @foreach ($errors->all() as $error)
-                                    <li>{{ str_replace(['The ', ' field is required.', ' must be a valid email address.', ' must be at least 8 characters.', ' confirmation does not match.', ' has already been taken.'], ['O campo ', ' é obrigatório.', ' deve ser um endereço de email válido.', ' deve ter pelo menos 8 caracteres.', ' de confirmação não corresponde.', ' já está em uso.'], $error) }}</li>
-                                @endforeach
-                            </ul>
-                        </div>
-                    @endif
 
                     <form method="POST" action="{{ route('register') }}" enctype="multipart/form-data" class="register-form">
                         @csrf
@@ -26,7 +16,14 @@
                             <label for="name" class="register-label">Nome</label>
 
                             <div class="register-input-container">
-                                <input id="name" type="text" class="register-control @error('name') register-invalid @enderror" name="name" value="{{ old('name') }}" required autocomplete="name" autofocus placeholder="Digite seu nome completo">
+                                <input id="name" type="text" class="register-control @error('name') register-invalid @enderror" 
+                                name="name"
+                                value="{{ old('name') }}" 
+                                required autocomplete="name" 
+                                autofocus placeholder="Digite seu nome completo"
+                                pattern="[A-Za-zÀ-ÿ\s]+"
+                                title="Apenas letras são permitidas"
+                                >
 
                                 @error('name')
                                     <span class="register-feedback" role="alert">
@@ -40,7 +37,11 @@
                             <label for="email" class="register-label">Email</label>
 
                             <div class="register-input-container">
-                                <input id="email" type="email" class="register-control @error('email') register-invalid @enderror" name="email" value="{{ old('email') }}" required autocomplete="email" placeholder="Digite seu email">
+                                <input id="email" type="email" 
+                                class="register-control @error('email') register-invalid @enderror" 
+                                name="email" value="{{ old('email') }}" 
+                                required autocomplete="email" 
+                                placeholder="Digite seu email">
 
                                 @error('email')
                                     <span class="register-feedback" role="alert">

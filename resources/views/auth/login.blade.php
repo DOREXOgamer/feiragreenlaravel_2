@@ -13,8 +13,10 @@
                 
                 <div class="form-group">
                     <label for="email"><b>Email</b></label>
-                    <input id="email" type="email" class="form-control @error('email') is-invalid @enderror" 
-                           name="email" value="{{ old('email') }}" required autocomplete="email" autofocus
+                    <input id="email" type="email" 
+                           class="form-control @error('email') is-invalid @enderror" 
+                           name="email" value="{{ old('email') }}" 
+                           required autocomplete="email"
                            placeholder="Insira seu email">
                     
                     @error('email')

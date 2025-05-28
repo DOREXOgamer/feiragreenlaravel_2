@@ -22,7 +22,12 @@ class CartController extends Controller
         $cart = session()->get('cart', []);
 
         if(isset($cart[$id])) {
-            $cart[$id]['quantity']++;
+            // Limitar a quantidade ao adicionar
+            if ($cart[$id]['quantity'] < 100) {
+                $cart[$id]['quantity']++;
+            } else {
+            return redirect()->back()->with('error', 'A quantidade máxima para este produto é 100 unidades.');
+            }
         } else {
             $cart[$id] = [
                 "nome" => $produto->nome,
@@ -34,7 +39,7 @@ class CartController extends Controller
 
         session()->put('cart', $cart);
 
-        return redirect()->back()->with('success', 'Produto adicionado ao carrinho!');
+                return redirect()->back()->with('success', 'Produto adicionado ao carrinho!');
     }
 
     // Update product quantity in cart
@@ -44,15 +49,25 @@ class CartController extends Controller
 
         if(isset($cart[$id])) {
             $quantity = $request->input('quantity');
-            if($quantity > 0) {
+
+            // Limitar a quantidade ao atualizar
+            if ($quantity > 0 && $quantity <= 100) {
                 $cart[$id]['quantity'] = $quantity;
-            } else {
+                session()->put('cart', $cart);
+                return redirect()->back()->with('success', 'Carrinho atualizado!');
+            } elseif ($quantity > 100) {
+                // Se a quantidade for maior que 100, defina para 100
+                $cart[$id]['quantity'] = 100;
+                session()->put('cart', $cart);
+                return redirect()->back()->with('error', 'A quantidade máxima para este produto é 100 unidades. Quantidade ajustada.');
+            } else { // quantity <= 0
                 unset($cart[$id]);
+                session()->put('cart', $cart);
+                return redirect()->back()->with('success', 'Produto removido do carrinho!');
             }
-            session()->put('cart', $cart);
         }
 
-        return redirect()->back()->with('success', 'Carrinho atualizado!');
+        return redirect()->back()->with('error', 'Item não encontrado no carrinho.');
     }
 
     // Remove product from cart

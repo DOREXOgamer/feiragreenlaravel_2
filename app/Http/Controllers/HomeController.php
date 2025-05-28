@@ -11,36 +11,48 @@ use Illuminate\Support\Facades\Storage;
 class HomeController extends Controller
 {
     /**
-     * Exibe a página inicial
+     * Exibe a página inicial com produtos de categorias específicas.
      */
     public function home()
     {
-        $produtos = Produto::all() ?? [];
-        $jsonPath = public_path('imagens/imagens.json');
-        $imagens = [];
+        $categoriasDesejadas = ['Frutas', 'Hortaliças', 'Verduras',];
+        $produtosSelecionados = Produto::whereIn('categoria', $categoriasDesejadas)->get();
 
-        if (File::exists($jsonPath)) {
-            $imagens = json_decode(File::get($jsonPath), true) ?? [];
-        }
+        $jsonPath = public_path('imagens/imagens.json');
+        $imagens = File::exists($jsonPath) ? json_decode(File::get($jsonPath), true) ?? [] : [];
+
+        $legumes = Produto::where('categoria', 'Legumes')->get();
+
 
         return view('home', [
-            'produtos' => $produtos,
-            'imagens'  => $imagens
+            'produtos' => $produtosSelecionados,
+            'imagens'  => $imagens,
+            'legumes'  => $legumes,
         ]);
     }
 
+
+
     /**
-     * Processa a busca de produtos
+     * Processa a busca de produtos pelo nome.
      */
     public function buscar(Request $request)
     {
+        $request->validate([
+            'termo' => 'nullable|string|max:100',
+        ], [
+            'termo.max' => 'O termo de busca não pode ter mais de 100 caracteres.',
+            'termo.string' => 'O termo de busca deve ser um texto válido.'
+        ]);
+
         $termo = $request->input('termo', '');
         $produtos = Produto::where('nome', 'LIKE', "%{$termo}%")->get();
+
         return view('busca', compact('produtos', 'termo'));
     }
 
     /**
-     * Área do painel administrativo
+     * Exibe o painel administrativo.
      */
     public function dashboard()
     {
@@ -48,25 +60,28 @@ class HomeController extends Controller
     }
 
     /**
-     * Exibe a página de perfil do usuário
+     * Exibe o perfil do usuário logado.
      */
     public function perfil()
     {
-        $user     = Auth::user();
+        $user = Auth::user();
         $produtos = $user->produtos ?? collect();
         return view('perfil', compact('user', 'produtos'));
     }
 
     /**
-     * Atualiza o perfil do usuário (nome e imagem)
+     * Atualiza nome e imagem do perfil do usuário.
      */
     public function updatePerfil(Request $request)
     {
         $user = Auth::user();
 
         $request->validate([
-            'name'  => 'required|string|max:255',
-            'image' => 'nullable|image|max:2048',
+            'name'  => ['required', 'string', 'max:255', 'regex:/^[A-Za-zÀ-ÿ\s]+$/'],
+            'image' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif', 'max:2048'],
+        ], [
+            'name.regex' => 'O nome deve conter apenas letras e espaços.',
+            'image.mimes' => 'A imagem deve ser um arquivo do tipo: jpeg, png, jpg, gif.',
         ]);
 
         $user->name = $request->input('name');
@@ -78,10 +93,10 @@ class HomeController extends Controller
                     unlink($oldImagePath);
                 }
             }
+
             $image = $request->file('image');
             $imageName = time() . '_' . $image->getClientOriginalName();
-            $destinationPath = public_path('imagens/profile_images');
-            $image->move($destinationPath, $imageName);
+            $image->move(public_path('imagens/profile_images'), $imageName);
             $user->image = $imageName;
         }
 
@@ -91,38 +106,43 @@ class HomeController extends Controller
     }
 
     /**
-     * Exibe a página de gerenciamento de produtos
+     * Exibe todos os produtos do usuário logado.
      */
     public function indexProdutos()
     {
-        $user     = Auth::user();
+        $user = Auth::user();
         $produtos = $user->produtos()->get();
         return view('produto.index', compact('produtos'));
     }
 
     /**
-     * Adiciona um novo produto
+     * Adiciona um novo produto.
      */
     public function addProduto(Request $request)
-    {
-        $request->validate([
-            'nome'      => 'required|string|max:255',
-            'preco'     => 'required|numeric',
-            'categoria' => 'required|string|max:255',
-            'imagem'    => 'nullable|image|max:2048',
+    {$request->validate([
+            'nome'      => ['required', 'string', 'max:50', 'regex:/^[A-Za-zÀ-ÿ\s]+$/'],
+            'preco'     => 'required|numeric|min:0.01|max:5000.00',
+            'categoria' => ['required', 'string', 'max:255', 'in:Frutas,Verduras,Hortaliças,Legumes,Outros'],
+            'imagem'    => ['required', 'image', 'mimes:jpeg,png,jpg,gif', 'max:2048'],
+        ], [
+            'nome.regex' => 'O nome do produto deve conter apenas letras e espaços.',
+            'preco.min' => 'O preço deve ser no mínimo R$ 0,01.',
+            'preco.max' => 'O preço não pode exceder R$ 5.000,00.',
+            'categoria.in' => 'Categoria inválida.',
+            'imagem.required' => 'A imagem do produto é obrigatória.',
+            'imagem.image' => 'O arquivo deve ser uma imagem válida.',
+            'imagem.mimes' => 'A imagem deve ser um arquivo do tipo: jpeg, png, jpg, gif.',
+            'imagem.max' => 'A imagem não pode ter mais de 2MB.'
         ]);
 
         $produto = new Produto();
-        $produto->nome      = $request->input('nome');
-        $produto->preco     = $request->input('preco');
-        $produto->categoria = $request->input('categoria');
-        $produto->user_id   = Auth::id();
+        $produto->fill($request->only(['nome', 'preco', 'categoria']));
+        $produto->user_id = Auth::id();
 
         if ($request->hasFile('imagem')) {
             $image = $request->file('imagem');
             $imageName = time() . '_' . $image->getClientOriginalName();
-            $destinationPath = public_path('imagens/product_images');
-            $image->move($destinationPath, $imageName);
+            $image->move(public_path('imagens/product_images'), $imageName);
             $produto->imagem = $imageName;
         }
 
@@ -132,7 +152,7 @@ class HomeController extends Controller
     }
 
     /**
-     * Exibe o formulário de edição de um produto
+     * Exibe o formulário de edição de um produto.
      */
     public function editProduto($id)
     {
@@ -140,11 +160,12 @@ class HomeController extends Controller
         if ($produto->user_id !== Auth::id()) {
             abort(403, 'Acesso negado');
         }
+
         return view('produto.edit', compact('produto'));
     }
 
     /**
-     * Atualiza um produto existente
+     * Atualiza os dados de um produto.
      */
     public function updateProduto(Request $request, $id)
     {
@@ -153,16 +174,26 @@ class HomeController extends Controller
             abort(403, 'Acesso negado');
         }
 
-        $request->validate([
-            'nome'      => 'required|string|max:255',
-            'preco'     => 'required|numeric',
+        $rules = [
+            'nome'      => 'required|string|max:50',
+            'preco'     => 'required|numeric|min:0.01|max:5000.00',
             'categoria' => 'required|string|max:255',
-            'imagem'    => 'nullable|image|max:2048',
+        ];
+
+        $rules['imagem'] = $produto->imagem ? 'nullable|image|max:2048' : 'required|image|max:2048';
+
+        $request->validate($rules, [
+            'nome.regex' => 'O nome do produto deve conter apenas letras e espaços.',
+            'preco.min' => 'O preço deve ser no mínimo R$ 0,01.',
+            'preco.max' => 'O preço não pode exceder R$ 5.000,00.',
+            'categoria.in' => 'Categoria inválida.',
+            'imagem.required' => 'A imagem do produto é obrigatória se não houver uma existente.',
+            'imagem.image' => 'O arquivo deve ser uma imagem válida.',
+            'imagem.mimes' => 'A imagem deve ser um arquivo do tipo: jpeg, png, jpg, gif.',
+            'imagem.max' => 'A imagem não pode ter mais de 2MB.'
         ]);
 
-        $produto->nome      = $request->input('nome');
-        $produto->preco     = $request->input('preco');
-        $produto->categoria = $request->input('categoria');
+        $produto->fill($request->only(['nome', 'preco', 'categoria']));
 
         if ($request->hasFile('imagem')) {
             if ($produto->imagem) {
@@ -171,10 +202,10 @@ class HomeController extends Controller
                     unlink($oldImagePath);
                 }
             }
+            
             $image = $request->file('imagem');
             $imageName = time() . '_' . $image->getClientOriginalName();
-            $destinationPath = public_path('imagens/product_images');
-            $image->move($destinationPath, $imageName);
+            $image->move(public_path('imagens/product_images'), $imageName);
             $produto->imagem = $imageName;
         }
 
@@ -184,7 +215,7 @@ class HomeController extends Controller
     }
 
     /**
-     * Remove um produto
+     * Remove um produto.
      */
     public function deleteProduto($id)
     {
@@ -194,7 +225,10 @@ class HomeController extends Controller
         }
 
         if ($produto->imagem) {
-            Storage::delete('public/profile_images/' . $produto->imagem);
+            $imagePath = 'public/product_images/' . $produto->imagem;
+            if (Storage::exists($imagePath)) {
+                Storage::delete($imagePath);
+            }
         }
 
         $produto->delete();
@@ -203,7 +237,7 @@ class HomeController extends Controller
     }
 
     /**
-     * Deleta a conta do usuário e produtos associados
+     * Deleta a conta do usuário e todos os produtos associados.
      */
     public function deleteAccount()
     {
@@ -211,13 +245,19 @@ class HomeController extends Controller
 
         foreach ($user->produtos as $produto) {
             if ($produto->imagem) {
-                Storage::delete('public/profile_images/' . $produto->imagem);
+                $imagePath = 'public/product_images/' . $produto->imagem;
+                if (Storage::exists($imagePath)) {
+                    Storage::delete($imagePath);
+                }
             }
             $produto->delete();
         }
 
         if ($user->image) {
-            Storage::delete('public/profile_images/' . $user->image);
+            $imagePath = 'public/profile_images/' . $user->image;
+            if (Storage::exists($imagePath)) {
+                Storage::delete($imagePath);
+            }
         }
 
         $user->delete();
@@ -227,16 +267,19 @@ class HomeController extends Controller
     }
 
     /**
-     * Exibe os detalhes de um produto
+     * Exibe os detalhes de um produto.
      */
     public function showProduto($id)
     {
         $produto = Produto::findOrFail($id);
         return view('produto.show', compact('produto'));
     }
-    
+
+    /**
+     * Redireciona para a home.
+     */
     public function index()
-{
-    return $this->home(); // Chama o método home existente
-}
+    {
+        return $this->home();
+    }
 }
